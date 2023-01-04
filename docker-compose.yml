@@ -1,16 +1,42 @@
 version: '3'
 
 services:
-  reverse-proxy:
+  traefikOmbi:
     # The official v2 Traefik docker image
     image: traefik:v2.9
-    # Enables the web UI and tells Traefik to listen to docker
-    command: --api.insecure=true --providers.docker
+    container_name: traefikOmbi
+    command: 
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=true"
+      - "--providers.docker.endpoint=npipe:////./pipe/docker_engine"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=a@razzormail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      # The HTTP port
       - "80:80"
-      # The Web UI (enabled by --api.insecure=true)
+      - "443:443"
       - "8080:8080"
     volumes:
       # So that Traefik can listen to the Docker events
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefikOmbi.rule=Host(`ombi.razzormail.com`)"
+      - "traefik.http.routers.traefikOmbi.entrypoints=websecure"
+      - "traefik.http.routers.traefikOmbi.tls.certresolver=myresolver"
+      - traefik.http.services.traefikOmbi.loadbalancer.server.port=3579
+      - traefik.http.middlewares.traefikOmbi.headers.SSLRedirect=true
+      - traefik.http.middlewares.traefikOmbi.headers.STSSeconds=315360000
+      - traefik.http.middlewares.traefikOmbi.headers.browserXSSFilter=true
+      - traefik.http.middlewares.traefikOmbi.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.traefikOmbi.headers.forceSTSHeader=true
+      - traefik.http.middlewares.traefikOmbi.headers.SSLHost=
+      - traefik.http.middlewares.traefikOmbi.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.traefikOmbi.headers.STSPreload=true
+      - traefik.http.middlewares.traefikOmbi.headers.frameDeny=true

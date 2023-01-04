@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  traefikOmbi:
+    # The official v2 Traefik docker image
+    image: traefik:v2.9
+    container_name: traefikOmbi
+    command: 
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.endpoint=npipe:////./pipe/docker_engine"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=a@razzormail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "./letsencrypt:/letsencrypt"
+  whoami:
+    image: "traefik/whoami"
+    container_name: "simple-service"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`ombi.razzormail.com`)"
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      # Ombi labels
+      # - traefik.http.services.traefikOmbi.loadbalancer.server.port=3579
+      # - traefik.docker.network=traefik_proxy
+      # - traefik.http.routers.traefikOmbi.rule=Host(`ombi.razzormail.com`)
+      # - traefik.http.routers.traefikOmbi.tls=true #sets the service to use TLS
+      # - traefik.http.routers.traefikOmbi.tls.certresolver=http #references our certificatesResolvers in traefik.yml
+      # - traefik.http.routers.traefikOmbi.tls.domains[0].main=*.razzormail.com
+      # - traefik.http.routers.traefikOmbi.tls.domains[0].sans=razzormail.com
+      # - traefik.http.middlewares.traefikOmbi.headers.SSLRedirect=true
+      # - traefik.http.middlewares.traefikOmbi.headers.STSSeconds=315360000
+      # - traefik.http.middlewares.traefikOmbi.headers.browserXSSFilter=true
+      # - traefik.http.middlewares.traefikOmbi.headers.contentTypeNosniff=true
+      # - traefik.http.middlewares.traefikOmbi.headers.forceSTSHeader=true
+      # - traefik.http.middlewares.traefikOmbi.headers.SSLHost=
+      # - traefik.http.middlewares.traefikOmbi.headers.STSIncludeSubdomains=true
+      # - traefik.http.middlewares.traefikOmbi.headers.STSPreload=true
+      # - traefik.http.middlewares.traefikOmbi.headers.frameDeny=true
